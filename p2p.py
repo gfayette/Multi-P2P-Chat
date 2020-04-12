@@ -1,3 +1,20 @@
+"""
+George Fayette
+Multi-Party P2P Chat
+4-1-2020
+
+This program continuously listens for new incoming p2p connections.
+Each connection uses 2 sockets, one for sending messages and one
+for receiving messages.
+
+The user may initiate a new connection by pressing 'C' and entering
+an IP address and port number. Messages entered by the user are sent
+to all connected peers.
+
+Possible improvement - Relay new incoming connections to all currently
+connected peers to automatically create a distributed group chat.
+"""
+
 import socket
 from threading import Thread
 from emojis import emojis
