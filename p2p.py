@@ -11,16 +11,20 @@ The user may initiate a new connection by pressing 'C' and entering
 an IP address and port number. Messages entered by the user are sent
 to all connected peers.
 
+All sending sockets are handled by a single thread while each receiving
+socket has its own thread. The close connection command is sent to all
+peers and relayed back to the host's receiving sockets, closing all
+sockets and exiting all threads along the way.
+
 Possible improvement - Relay new incoming connections to all currently
 connected peers to automatically create a distributed group chat.
 """
 
-import socket
+import emojis, socket
 from threading import Thread
-from emojis import emojis
 
 
-def listen_to_socket(send_socket, receive_socket, name):
+def receive_from_socket(send_socket, receive_socket, name):
     while True:
         message = receive_socket.recv(1024).decode()
         if message.upper() == 'X':
@@ -41,11 +45,11 @@ def establish_connection(send_socket, receive_socket, name):
     friend_name = receive_socket.recv(1024).decode()
     print(friend_name + ' has entered the chat.')
 
-    listen_thread = Thread(target=listen_to_socket, args=(send_socket, receive_socket, friend_name,))
+    listen_thread = Thread(target=receive_from_socket, args=(send_socket, receive_socket, friend_name,))
     listen_thread.start()
 
 
-def start_connection(name, sockets):
+def start_connection(name, send_sockets):
     user_input = input('Enter IP and port number:\n')
     try:
         host, port = user_input.split()
@@ -54,7 +58,7 @@ def start_connection(name, sockets):
         send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         send_socket.connect((host, int(port)))
 
-        sockets.append(send_socket)
+        send_sockets.append(send_socket)
         establish_connection(send_socket, receive_socket, name)
     except Exception:
         print("Connection to " + user_input + " was unsuccessful.")
@@ -77,14 +81,14 @@ def listen_for_new_connections(name, send_sockets):
             break
 
 
-def handle_input(send_socks, name):
+def handle_input(send_sockets, name):
     while True:
         message = input()
         if message.upper() == 'C':
-            start_connection(name, send_socks)
+            start_connection(name, send_sockets)
         elif message.upper() == 'X':
             print('Closing connections.')
-            for send_socket in send_socks:
+            for send_socket in send_sockets:
                 try:
                     send_socket.sendall(message.encode())
                     send_socket.close()
@@ -93,7 +97,7 @@ def handle_input(send_socks, name):
             break
         elif message != '':
             print(emojis.encode(name + '\t' + message))
-            for send_socket in send_socks:
+            for send_socket in send_sockets:
                 try:
                     send_socket.sendall(message.encode())
                 except Exception:
